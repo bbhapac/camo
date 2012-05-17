@@ -1,0 +1,15 @@
+# This file is managed by chef! Override node.default["git_pairs_authors"] in attributes/git_pairs.rb to modify.
+
+pairs:
+  ts: Tommy Sullivan
+  wei: Wei Lu; wei
+  ccm: Carl Coryell-Martin
+  mk: Mohan Krishnan
+  tm: Tomek Maszkowski
+  zi: Zi
+  dg: Diego García
+email:
+  prefix: pair
+  domain: newcontext.com
+
+global: true

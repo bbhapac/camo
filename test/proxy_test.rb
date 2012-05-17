@@ -10,8 +10,8 @@ require 'test/unit'
 
 module CamoProxyTests
   def config
-    { 'key'  => ENV['CAMO_KEY']  || "0x24FEEDFACEDEADBEEFCAFE",
-      'host' => ENV['CAMO_HOST'] || "http://localhost:8081" }
+    { 'key'  => ENV['CAMO_KEY']  || "bbh-pie",
+      'host' => ENV['CAMO_HOST'] || "http://localhost:9666" }
   end
 
   def test_proxy_valid_image_url
