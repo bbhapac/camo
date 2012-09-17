@@ -84,13 +84,17 @@
           return four_oh_four(resp, "Content-Length exceeded");
         } else {
           newHeaders = {
-            'expires': srcResp.headers['expires'],
             'content-type': srcResp.headers['content-type'],
-            'cache-control': srcResp.headers['cache-control'],
-            'content-length': content_length,
+            'cache-control': srcResp.headers['cache-control'] || 'public, max-age=31536000',
             'Camo-Host': camo_hostname,
             'X-Content-Type-Options': 'nosniff'
           };
+          if (content_length != null) {
+            newHeaders['content-length'] = content_length;
+          }
+          if (srcResp.headers['transfer-encoding']) {
+            newHeaders['transfer-encoding'] = srcResp.headers['transfer-encoding'];
+          }
           if (srcResp.headers['content-encoding']) {
             newHeaders['content-encoding'] = srcResp.headers['content-encoding'];
           }
@@ -116,6 +120,8 @@
               });
             case 301:
             case 302:
+            case 303:
+            case 307:
               if (remaining_redirects <= 0) {
                 return four_oh_four(resp, "Exceeded max depth");
               } else {
@@ -157,7 +163,7 @@
   };
 
   server = Http.createServer(function(req, resp) {
-    var dest_url, encoded_url, hmac, hmac_digest, query_digest, transferred_headers, url, url_type, _base, _ref;
+    var dest_url, encoded_url, hmac, hmac_digest, query_digest, transferred_headers, url, url_type, user_agent, _base, _ref;
     if (req.method !== 'GET' || req.url === '/') {
       resp.writeHead(200);
       return resp.end('hwhat');
@@ -171,8 +177,10 @@
       total_connections += 1;
       current_connections += 1;
       url = Url.parse(req.url);
+      user_agent = (_base = process.env).CAMO_HEADER_VIA || (_base.CAMO_HEADER_VIA = "Camo Asset Proxy " + version);
       transferred_headers = {
-        'Via': (_base = process.env).CAMO_HEADER_VIA || (_base.CAMO_HEADER_VIA = "Camo Asset Proxy " + version),
+        'Via': user_agent,
+        'User-Agent': user_agent,
         'Accept': req.headers.accept,
         'Accept-Encoding': req.headers['accept-encoding'],
         'x-forwarded-for': req.headers['x-forwarded-for'],

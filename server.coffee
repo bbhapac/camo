@@ -66,13 +66,16 @@ process_url = (url, transferred_headers, resp, remaining_redirects) ->
         four_oh_four(resp, "Content-Length exceeded")
       else
         newHeaders =
-          'expires'                : srcResp.headers['expires']
           'content-type'           : srcResp.headers['content-type']
-          'cache-control'          : srcResp.headers['cache-control']
-          'content-length'         : content_length
+          'cache-control'          : srcResp.headers['cache-control'] || 'public, max-age=31536000'
           'Camo-Host'              : camo_hostname
           'X-Content-Type-Options' : 'nosniff'
 
+        # Handle chunked responses properly
+        if content_length?
+          newHeaders['content-length'] = content_length
+        if srcResp.headers['transfer-encoding']
+          newHeaders['transfer-encoding'] = srcResp.headers['transfer-encoding']
         if srcResp.headers['content-encoding']
           newHeaders['content-encoding'] = srcResp.headers['content-encoding']
 
@@ -82,6 +85,7 @@ process_url = (url, transferred_headers, resp, remaining_redirects) ->
         srcResp.on 'error', ->
           if is_finished
             finish resp
+
         switch srcResp.statusCode
           when 200
             if newHeaders['content-type'] && newHeaders['content-type'].slice(0, 5) != 'image'
@@ -92,7 +96,7 @@ process_url = (url, transferred_headers, resp, remaining_redirects) ->
             resp.writeHead srcResp.statusCode, newHeaders
             srcResp.on 'data', (chunk) ->
               resp.write chunk
-          when 301, 302
+          when 301, 302, 303, 307
             if remaining_redirects <= 0
               four_oh_four(resp, "Exceeded max depth")
             else
@@ -137,9 +141,11 @@ server = Http.createServer (req, resp) ->
     total_connections   += 1
     current_connections += 1
     url = Url.parse req.url
+    user_agent = process.env.CAMO_HEADER_VIA or= "Camo Asset Proxy #{version}"
 
     transferred_headers =
-      'Via'                    : process.env.CAMO_HEADER_VIA or= "Camo Asset Proxy #{version}"
+      'Via'                    : user_agent
+      'User-Agent'             : user_agent
       'Accept'                 : req.headers.accept
       'Accept-Encoding'        : req.headers['accept-encoding']
       'x-forwarded-for'        : req.headers['x-forwarded-for']
@@ -181,7 +187,7 @@ server = Http.createServer (req, resp) ->
 console.log "SSL-Proxy running on #{port} with pid:#{process.pid}."
 console.log "Using the secret key #{shared_key}"
 
-Fs.open "tmp/camo.pid", "w", 0o0600, (err, fd) ->
+Fs.open "tmp/camo.pid", "w", 0o600, (err, fd) ->
   Fs.writeSync fd, process.pid
 
 server.listen port
